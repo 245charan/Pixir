@@ -3,19 +3,6 @@ from tensorflow.keras.models import Model
 from tensorflow_core.python.keras import Sequential
 from tensorflow_core.python.keras.layers import Dense
 
-def __init__(self, learning_rate, z_input_dim):
-    """
-    init params
-
-    :param learning_rate: learning rate of optimizer
-    :param z_input_dim: input dim of z
-    """
-    self.learning_rate = learning_rate
-    self.z_input_dim = z_input_dim
-    self.D = self.discriminator()
-    self.G = self.generator()
-    self.GD = self.combined()
-
 
 class GAN:
     def __init__(self, learning_rate, z_input_dim):
