@@ -1,3 +1,5 @@
+from keras.layers import LeakyReLU, BatchNormalization, Reshape, UpSampling2D, Conv2D
+from keras.optimizers import Adam
 from tensorflow.keras.models import Model
 ########## G networks ###########
 from tensorflow_core.python.keras import Sequential
@@ -12,27 +14,28 @@ class GAN:
         :param learning_rate: learning rate of optimizer
         :param z_input_dim: input dim of z
         """
-        self.learning_rate = learning_rate
-        self.z_input_dim = z_input_dim
-        self.D = self.discriminator()
-        self.G = self.generator()
-        self.GD = self.combined()
+        super(GAN, self).__init__()
+        self.Dense1 = Dense(512, input_dim=z_input_dim)
+        self.LeakyReLU1 = LeakyReLU(0.2)
+        self.Dense2 = Dense(128 * 7 * 7)
+        self.LeakyReLU2 = LeakyReLU(0.2)
+        self.BatchNormalization2 = BatchNormalization()
+        self.Reshape3 = Reshape((128, 7, 7), input_shape=(128 * 7 * 7,))
+        self.UpSampling2D3 = UpSampling2D(size=(2, 2))
+        self.Conv2D3 = Conv2D(64, (5, 5), padding='same', activation='tanh')
+        self.UpSampling2D3 = UpSampling2D(size=(2, 2))
+        self.Conv2D4 = Conv2D(1, (5, 5), padding='same', activation='tanh')
 
-    """
-    Generator
-    """
-    G = Sequential()
-    G.add(Dense(512, input_dim=self.z_input_dim))
-    G.add(LeakyReLU(0.2))
-    G.add(Dense(128 * 7 * 7))
-    G.add(LeakyReLU(0.2))
-    G.add(BatchNormalization())
-    G.add(Reshape((128, 7, 7), input_shape=(128 * 7 * 7,)))
-    G.add(UpSampling2D(size=(2, 2)))
-    G.add(Conv2D(64, (5, 5), padding='same', activation='tanh'))
-    G.add(UpSampling2D(size=(2, 2)))
-    G.add(Conv2D(1, (5, 5), padding='same', activation='tanh'))
+    def call(self, input):
+        x = self.Dense1(input)
+        x = self.LeakyReLU1(x)
+        x = self.Dense2(x)
+        x = self.LeakyReLU2(x)
+        x = self.BatchNormalization2(x)
+        x = self.Reshape3(x)
+        x = self.UpSampling2D3(x)
+        x = self.Conv2D3(x)
+        x = self.UpSampling2D3(x)
+        x = self.Conv2D4(x)
 
-    adam = Adam(lr=self.learning_rate, beta_1=0.5)
-    G.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
-    return G
+        return x
