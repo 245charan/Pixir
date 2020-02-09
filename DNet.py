@@ -5,21 +5,21 @@ from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, LeakyReLU, 
 
 
 class DNet(keras.Model):
-    def __init__(self, text_vector):
+    def __init__(self, text_vector, dropout_rate=0.2):
         super(DNet, self).__init__()
         self.text_vector = text_vector
         self.conv1 = Conv2D(64, 5, padding='same', strides=2)
         self.leakyrelu1 = LeakyReLU()
         self.bn1 = BatchNormalization()
-        self.dropout1 = Dropout(0.3)
+        self.dropout1 = Dropout(dropout_rate)
         self.conv2 = Conv2D(128, 5, padding='same', strides=2)
         self.leakyrelu2 = LeakyReLU()
         self.bn2 = BatchNormalization()
-        self.dropout2 = Dropout(0.3)
+        self.dropout2 = Dropout(dropout_rate)
         self.flat = Flatten()
         self.dense1 = Dense(128)
         self.leakyrelu3 = LeakyReLU()
-        self.dropout3 = Dropout(0.3)
+        self.dropout3 = Dropout(dropout_rate)
         self.dense2 = Dense(1, activation='tanh')
 
     def call(self, input, **kwargs):

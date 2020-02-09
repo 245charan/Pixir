@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from TextEncoder import TextEncoder
 from GNet import GNet
 from DNet import DNet
-from Loss import r_precision
 
 VOCAB_SIZE = 14  # TBD after training
 EMB_SIZE = 128
@@ -15,7 +14,7 @@ EMB_SIZE = 128
 class TextGAN(keras.models.Model):
     def __init__(self):
         super(TextGAN, self).__init__()
-        self.text_encoder = TextEncoder(VOCAB_SIZE, 64, EMB_SIZE, drop_out_rate=0.3)
+        self.text_encoder = TextEncoder(VOCAB_SIZE, 64, EMB_SIZE, dropout_rate=0.3)
         self.generator = GNet((164,))
         self.discriminator = DNet((64, 64))
 
@@ -32,34 +31,34 @@ if __name__ == '__main__':
     img_batch = fetch_image()
     caption_batch = fetch_caption()
 
-    caption = 'The dog is jumping'
+    caption = ['The dog is jumping', 'the cat is flying']
     tokenizer = keras.preprocessing.text.Tokenizer()
     tokenizer.fit_on_texts(caption)
     print(tokenizer.index_word)
-    cap_vector = tokenizer.texts_to_sequences(caption, )
-    cap_vector = [token[0] for token in cap_vector if token]
+    cap_vector = tokenizer.texts_to_sequences(caption)
+    # cap_vector = [token[0] for token in cap_vector if token]
     print(cap_vector)
 
-    caption_emb = TextEncoder(VOCAB_SIZE, 64, EMB_SIZE, drop_out_rate=0.2)(np.array(cap_vector))
+    caption_emb = TextEncoder(VOCAB_SIZE, EMB_SIZE, 64, dropout_rate=0.2)(np.array(cap_vector))
     print(caption_emb)
 
-    noise = tf.random.normal((100,))
+    noise = tf.random.normal((caption_emb.shape[0], 100))
     print(noise)
 
-    gan_vector = tf.concat([caption_emb, noise], 0)
+    gan_vector = tf.concat([caption_emb, noise], -1)
     print(gan_vector)
 
-    generated_img = GNet((228,))(tf.reshape(gan_vector, [1, -1]))
+    generated_img = GNet((228,))(gan_vector)
     print(generated_img)
 
-    # img = tf.squeeze(generated_img)
-    # print(img)
+    img = generated_img[0]
+    print(img)
 
-    # plt.imshow(img)
-    # plt.axis('off')
-    # plt.show()
+    plt.imshow(img)
+    plt.axis('off')
+    plt.show()
 
-    prediction = DNet(tf.reshape(caption_emb, [1, -1]))(generated_img)
+    prediction = DNet(caption_emb)(generated_img)
     print(prediction)
 
 #     dummy_text = '''Preserved defective offending he daughters on or. Rejoiced prospect yet material servants out answered men admitted. Sportsmen certainty prevailed suspected am as. Add stairs admire all answer the nearer yet length. Advantages prosperous remarkably my inhabiting so reasonably be if. Too any appearance announcing impossible one. Out mrs means heart ham tears shall power every. \
