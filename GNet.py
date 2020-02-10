@@ -3,13 +3,13 @@ from tensorflow import keras
 
 
 class GNet(keras.Model):
-    def __init__(self, z_input_dim):
+    def __init__(self):
         """
         init params
         :param z_input_dim: input dim of z
         """
         super(GNet, self).__init__()
-        self.Dense1 = Dense(512, input_shape=z_input_dim)
+        self.Dense1 = Dense(512)
         self.LeakyReLU1 = LeakyReLU(0.2)
         self.Dense2 = Dense(128 * 16 * 16)
         self.LeakyReLU2 = LeakyReLU(0.2)

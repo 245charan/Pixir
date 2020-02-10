@@ -5,9 +5,8 @@ from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, LeakyReLU, 
 
 
 class DNet(keras.Model):
-    def __init__(self, text_vector, dropout_rate=0.2):
+    def __init__(self, dropout_rate=0.2):
         super(DNet, self).__init__()
-        self.text_vector = text_vector
         self.conv1 = Conv2D(64, 5, padding='same', strides=2)
         self.leakyrelu1 = LeakyReLU()
         self.bn1 = BatchNormalization()
@@ -22,8 +21,8 @@ class DNet(keras.Model):
         self.dropout3 = Dropout(dropout_rate)
         self.dense2 = Dense(1, activation='tanh')
 
-    def call(self, input, **kwargs):
-        x = self.conv1(input)
+    def call(self, img_vector, embedded_caption, **kwargs):
+        x = self.conv1(img_vector)
         x = self.leakyrelu1(x)
         x = self.bn1(x)
         x = self.dropout1(x)
@@ -34,7 +33,7 @@ class DNet(keras.Model):
         x = self.flat(x)
         x = self.dense1(x)
         x = self.leakyrelu3(x)
-        x = tf.concat((x, self.text_vector), axis=1)
+        x = tf.concat((x, embedded_caption), axis=1)
         x = self.dropout3(x)
         x = self.dense2(x)
 
