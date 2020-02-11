@@ -1,8 +1,7 @@
-from keras.preprocessing import sequence
+from tensorflow.keras.preprocessing import sequence
 from nltk.corpus import stopwords
-from keras.preprocessing.text import Tokenizer, text_to_word_sequence
+from tensorflow.keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from nltk.stem import WordNetLemmatizer
-from tensorflow.keras.preprocessing.text import text_to_word_sequence
 import numpy as np
 
 # nltk.download('punkt')
