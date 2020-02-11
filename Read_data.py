@@ -59,4 +59,4 @@ def read_labels(cap_num):
 if __name__ == '__main__':
     # read_images()
     labels = read_labels(2)
-    print(labels)
+    print('labels:', labels)

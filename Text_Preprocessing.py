@@ -12,8 +12,9 @@ import numpy as np
 
 def text_preprocessing(text, pad_maxlen):
     # text to word_sequence
-    texts = [text_to_word_sequence(word) for word in text]
-    print(texts)        # [['the', 'dog', 'is', 'jumping'], ['the', 'cat', 'is', 'flying', 'as', 'butterfly']]
+    # texts = [text_to_word_sequence(word) for word in text]
+    texts = [text_to_word_sequence(word) for texts in text for word in texts]
+    print(texts)  2      # [['the', 'dog', 'is', 'jumping'], ['the', 'cat', 'is', 'flying', 'as', 'butterfly']]
 
     # 표제어 추출
     n = WordNetLemmatizer()
@@ -46,5 +47,5 @@ def text_preprocessing(text, pad_maxlen):
 
 
 if __name__ == '__main__':
-    text = ['The dog is jumping', 'the cat is flying as butterfly']
+    text = [['The dog is jumping', 'the cat is flying as butterfly']]
     text_preprocessing(text, 5)
