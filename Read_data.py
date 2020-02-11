@@ -26,6 +26,7 @@ def read_images():
     img_set = np.array(img_set)
     # print(type(img_set))
     return img_set
+    # => ndarray
 
 def read_labels():
     """
@@ -55,8 +56,11 @@ def read_labels():
     label_set = np.array(label_set)
     # print(label_set.shape)
     return label_set
+    # [{'파일명.txt' : ['캡션1', '캡션2', ..]}, {  }, {  } .. ]
 
 
 if __name__ == '__main__':
     # read_images()
-    read_labels()
+    labels = read_labels()
+    print(labels)
+    print(labels.shape)
