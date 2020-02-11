@@ -20,21 +20,20 @@ class SimpleGAN(keras.models.Model):
         self.generator = GNet()
         self.discriminator = DNet(dropout_rate=DROPOUT_RATE)
 
-    def call(self, text_sequence_batch, image_batch, **kwargs):
+    def call(self, input, **kwargs):
         """
 
-        :param text_sequence_batch: tokenized text sequence batch
-        :param image_batch: image batch
+        :param input: tf.data.Dataset(images, texts)
         :return: (real_text, fake_image) 예측값, (real_text, real_image) 예측값, (fake_text, real_image) 예측값
         """
-        emb_vectors = self.text_encoder(text_sequence_batch)
+        emb_vectors = self.text_encoder(input[1])
         noise = tf.random.normal((emb_vectors.shape[0], 100))
         generator_input = tf.concat([emb_vectors, noise], -1)
         fake_images = self.generator(generator_input)
         fake_captions = derangement(emb_vectors)
         fake_image_pred = self.discriminator(fake_images, emb_vectors)
-        real_image_pred = self.discriminator(image_batch, emb_vectors)
-        fake_caption_pred = self.discriminator(image_batch, fake_captions)
+        real_image_pred = self.discriminator(input[0], emb_vectors)
+        fake_caption_pred = self.discriminator(input[0], fake_captions)
 
         return fake_image_pred, real_image_pred, fake_caption_pred
 
@@ -66,11 +65,16 @@ def fetch_caption():
 
 
 if __name__ == '__main__':
+    # model = keras.Sequential([
+    #     keras.layers.Dense(32, input_shape=(4,))
+    # ])
+    # print(model.trainable_variables)
+    model = SimpleGAN()
     # ls = [1, 2, 3, 4]
     # print(derangement(ls))
-    img_batch = fetch_image()
-    caption_batch = fetch_caption()
-
+    # img_batch = fetch_image()
+    # caption_batch = fetch_caption()
+    #
     caption = ['The dog is jumping', 'the cat is flying']
     tokenizer = keras.preprocessing.text.Tokenizer()
     tokenizer.fit_on_texts(caption)
@@ -81,8 +85,9 @@ if __name__ == '__main__':
 
     images = np.random.random((2, 64, 64, 3))
 
-    predictions = SimpleGAN()(cap_vector, images)
-    print(predictions)
+    predictions = model([images, cap_vector])
+    print(len(model.trainable_variables))
+    # print(predictions)
 
     # caption_emb = TextEncoder(VOCAB_SIZE, EMB_SIZE, 64, dropout_rate=0.2)(np.array(cap_vector))
     # print(caption_emb.shape)
