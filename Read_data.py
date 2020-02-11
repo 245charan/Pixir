@@ -23,9 +23,9 @@ def read_images():
         # print(path)
         img = Image.open(path, mode='r')
         img_set.append(img)
+    # img_set = np.array(img_set)
     # print(type(img_set))
     return img_set
-    # => ndarray
 
 def read_labels(cap_num):
     """
@@ -44,19 +44,20 @@ def read_labels(cap_num):
     for foldername, textnames in classfolder_list.items():
         # print('textnames:', textnames)
         for textname in textnames:
-            textdir = f'text/{foldername}/{textname}'
-            textname = textname.replace('.txt','')
             labels = {textname : []}
-            with open(textdir, mode='r', encoding='utf-8') as f:
+            textdir = f'text/{foldername}/{textname}'
+            with open(textdir, mode='r', encoding='utf-8')as f:
                 for line in f:
                     labels[textname].append(line.replace('\n', ''))
-            label_set.append(labels[textname][:cap_num])
 
+            label_set.append(labels)
+
+    label_set = np.array(label_set)
     # print(label_set.shape)
     return label_set
 
 
 if __name__ == '__main__':
-    # read_images()
-    labels = read_labels(2)
-    print('labels:', labels)
+    img = read_images()
+    # read_labels()
+    print(img)
