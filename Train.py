@@ -10,33 +10,51 @@ def train(text_vectors, images, model, epochs, batch_size=128, lr=1e-4):
 
     # Rescale -1 to 1
     images = images / 127.5 - 1.
-    images = np.expand_dims(images, axis=3)
+    # images = np.expand_dims(images, axis=3)
 
     # Adversarial ground truths
-    valid = np.ones((batch_size, 1))
-    fake = np.zeros((batch_size, 1))
+    # valid = np.ones((batch_size, 1))
+    # fake = np.zeros((batch_size, 1))
 
     for epoch in range(epochs):
         # idx = np.random.permutation(len(text_vectors))
         # img_batch = images[idx[:batch_size]]
-        dataset = tf.data.Dataset.zip((images, text_vectors))
+        dataset = tf.data.Dataset.from_tensor_slices((images, text_vectors))
+        dataset = dataset.shuffle(buffer_size=100)
         dataset = dataset.batch(batch_size)
         # img_dataset = tf.data.Dataset.from_tensor_slices(images)
         # img_dataset = img_dataset.batch(batch_size)
         # text_dataset = tf.data.Dataset.from_tensor_slices(text_vectors)
         # text_dataset = text_dataset.batch(batch_size)
-        with tf.GradientTape() as g_tape, tf.GradientTape() as d_tape:
-            fake_image_pred, real_image_pred, fake_caption_pred = model(dataset)
-            fake_image_loss, real_image_loss, fake_caption_loss = loss_fn(fake, fake_image_pred), loss_fn(valid, real_image_pred), loss_fn(fake, fake_caption_pred)
-            d_loss = (fake_image_loss + real_image_loss + fake_caption_loss) / 3
-            g_loss = loss_fn(valid, fake_image_pred)
-        g_grads = d_tape.gradient(d_loss, model.text_encoder.trainable_variables + model.generator.trainable_variables)
-        d_grads = g_tape.gradient(g_loss, model.discriminator.trainable_variables)
-        g_optimizer.apply_gradients([g_grads, model.text_encoder.trainable_variables + model.generator.trainable_variables])
-        d_optimizer.apply_gradients([d_grads, model.discriminator.trainable_variables])
+        for data in dataset:
+            fake_captions = derangement(data[1])
+            with tf.GradientTape() as g_tape, tf.GradientTape() as d_tape:
+                fake_image_pred, real_image_pred, fake_caption_pred = model(data, fake_captions)
+                fake_image_loss, real_image_loss, fake_caption_loss = \
+                    loss_fn(tf.zeros_like(fake_image_pred), fake_image_pred), \
+                    loss_fn(tf.ones_like(real_image_pred), real_image_pred), \
+                    loss_fn(tf.zeros_like(fake_caption_pred), fake_caption_pred)
+                d_loss = (fake_image_loss + real_image_loss + fake_caption_loss) / 3
+                g_loss = loss_fn(tf.ones_like(fake_image_pred), fake_image_pred)
+            g_trainable_variables = model.text_encoder.trainable_variables + model.generator.trainable_variables
+            g_grads = d_tape.gradient(d_loss, g_trainable_variables)
+            d_grads = g_tape.gradient(g_loss, model.discriminator.trainable_variables)
+            g_optimizer.apply_gradients(zip(g_grads, g_trainable_variables))
+            d_optimizer.apply_gradients(zip(d_grads, model.discriminator.trainable_variables))
 
         # Plot the progress
-        print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
+        print("%d [D loss: %f] [G loss: %f]" % (epoch, d_loss[0], g_loss[0]))
+
+
+def derangement(list):
+    while True:
+        shuffled_list = tf.random.shuffle(list)
+        for i in range(len(list)):
+            if all(tf.equal(list[i], shuffled_list[i])):
+                break
+        else:
+            break
+    return shuffled_list
 
 # class GAN():
 #     def __init__(self):

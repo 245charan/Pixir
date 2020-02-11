@@ -10,6 +10,13 @@ from Read_data import *
 from resize_image import resize_image
 from Text_Preprocessing import text_preprocessing
 from Train import train
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    tf.config.experimental.set_memory_growth(gpus[0], True)
+  except RuntimeError as e:
+    # 프로그램 시작시에 메모리 증가가 설정되어야만 합니다
+    print(e)
 
 VOCAB_SIZE = 14  # TBD after training
 HIDDEN_DIM = 64
@@ -24,40 +31,30 @@ class SimpleGAN(keras.models.Model):
         self.generator = GNet()
         self.discriminator = DNet(dropout_rate=DROPOUT_RATE)
 
-    def call(self, input, **kwargs):
+    def call(self, input, fake_captions, **kwargs):
         """
 
         :param input: tf.data.Dataset(images, texts)
+        :param fake_captions: 가짜 캡션 vector
         :return: (real_text, fake_image) 예측값, (real_text, real_image) 예측값, (fake_text, real_image) 예측값
         """
         emb_vectors = self.text_encoder(input[1])
+        fake_emb_vectors = self.text_encoder(fake_captions)
         noise = tf.random.normal((emb_vectors.shape[0], 100))
         generator_input = tf.concat([emb_vectors, noise], -1)
         fake_images = self.generator(generator_input)
-        fake_captions = derangement(emb_vectors)
         fake_image_pred = self.discriminator(fake_images, emb_vectors)
         real_image_pred = self.discriminator(input[0], emb_vectors)
-        fake_caption_pred = self.discriminator(input[0], fake_captions)
+        fake_caption_pred = self.discriminator(input[0], fake_emb_vectors)
 
         return fake_image_pred, real_image_pred, fake_caption_pred
 
     def generate(self, text_sequence):
-        emb_vector = self.text_encoder(text_sequence)
-        noise = tf.random.normal((emb_vector.shape[0], 100))
+        emb_vector = self.text_encoder(tf.reshape(text_sequence, [1, -1]))
+        noise = tf.random.normal((1, 100))
         generator_input = tf.concat([emb_vector, noise], -1)
         fake_image = self.generator(generator_input)
         return fake_image
-
-
-def derangement(list):
-    while True:
-        shuffled_list = tf.random.shuffle(list)
-        for i in range(len(list)):
-            if all(tf.equal(list[i], shuffled_list[i])):
-                break
-        else:
-            break
-    return shuffled_list
 
 
 if __name__ == '__main__':
@@ -113,4 +110,20 @@ if __name__ == '__main__':
     texts_vectors, vocab_size = text_preprocessing(texts)
 
     model = SimpleGAN(vocab_size)
-    train(texts_vectors, image_resize, model, epochs=50)
+    train(texts_vectors, image_resize, model, epochs=50, batch_size=16)
+    model.save_weights('SimpleGAN.h5')
+
+    print(texts_vectors[0])
+    img = model.generate(texts_vectors[0])
+    img = (img + 1) * 255
+    plt.imshow(img.numpy().squeeze())
+    plt.axis('off')
+    plt.show()
+
+    # image_resize = image_resize / 255 - 1
+    # pred = model([image_resize[:10], texts_vectors[:10]], texts_vectors[10:20])
+    # print(len(model.text_encoder.trainable_variables + model.generator.trainable_variables))
+    # print()
+    # # print(len(model.generator.trainable_variables))
+    # print()
+    # print(len(model.discriminator.trainable_variables))
