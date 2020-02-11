@@ -23,12 +23,11 @@ def read_images():
         # print(path)
         img = Image.open(path, mode='r')
         img_set.append(img)
-    img_set = np.array(img_set)
     # print(type(img_set))
     return img_set
     # => ndarray
 
-def read_labels():
+def read_labels(cap_num):
     """
     read_labels 실행시 text 폴더에 있는 text파일들을 읽어서
     각 파일명을 key로 갖는 dictionary로 구성된 ndarray를 return
@@ -45,22 +44,19 @@ def read_labels():
     for foldername, textnames in classfolder_list.items():
         # print('textnames:', textnames)
         for textname in textnames:
-            labels = {textname : []}
             textdir = f'text/{foldername}/{textname}'
-            with open(textdir, mode='r', encoding='utf-8')as f:
+            textname = textname.replace('.txt','')
+            labels = {textname : []}
+            with open(textdir, mode='r', encoding='utf-8') as f:
                 for line in f:
                     labels[textname].append(line.replace('\n', ''))
+            label_set.append(labels[textname][:cap_num])
 
-            label_set.append(labels)
-
-    label_set = np.array(label_set)
     # print(label_set.shape)
     return label_set
-    # [{'파일명.txt' : ['캡션1', '캡션2', ..]}, {  }, {  } .. ]
 
 
 if __name__ == '__main__':
     # read_images()
-    labels = read_labels()
+    labels = read_labels(2)
     print(labels)
-    print(labels.shape)
