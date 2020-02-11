@@ -17,8 +17,14 @@ def train(text_vectors, images, model, epochs, batch_size=128, lr=1e-4):
     fake = np.zeros((batch_size, 1))
 
     for epoch in range(epochs):
-        dataset = tf.data.Dataset.from_tensor_slices((images, text_vectors))
-        dataset.batch(batch_size)
+        # idx = np.random.permutation(len(text_vectors))
+        # img_batch = images[idx[:batch_size]]
+        dataset = tf.data.Dataset.zip((images, text_vectors))
+        dataset = dataset.batch(batch_size)
+        # img_dataset = tf.data.Dataset.from_tensor_slices(images)
+        # img_dataset = img_dataset.batch(batch_size)
+        # text_dataset = tf.data.Dataset.from_tensor_slices(text_vectors)
+        # text_dataset = text_dataset.batch(batch_size)
         with tf.GradientTape() as g_tape, tf.GradientTape() as d_tape:
             fake_image_pred, real_image_pred, fake_caption_pred = model(dataset)
             fake_image_loss, real_image_loss, fake_caption_loss = loss_fn(fake, fake_image_pred), loss_fn(valid, real_image_pred), loss_fn(fake, fake_caption_pred)

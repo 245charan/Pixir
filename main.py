@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from TextEncoder import TextEncoder
 from GNet import GNet
 from DNet import DNet
+from Read_data import *
+from resize_image import resize_image
+from Text_Preprocessing import text_preprocessing
+from Train import train
 
 VOCAB_SIZE = 14  # TBD after training
 HIDDEN_DIM = 64
@@ -14,9 +18,9 @@ DROPOUT_RATE = 0.3
 
 
 class SimpleGAN(keras.models.Model):
-    def __init__(self):
+    def __init__(self, vocab_size):
         super(SimpleGAN, self).__init__()
-        self.text_encoder = TextEncoder(VOCAB_SIZE, HIDDEN_DIM, EMB_SIZE, dropout_rate=DROPOUT_RATE)
+        self.text_encoder = TextEncoder(vocab_size, HIDDEN_DIM, EMB_SIZE, dropout_rate=DROPOUT_RATE)
         self.generator = GNet()
         self.discriminator = DNet(dropout_rate=DROPOUT_RATE)
 
@@ -56,37 +60,29 @@ def derangement(list):
     return shuffled_list
 
 
-def fetch_image():
-    pass
-
-
-def fetch_caption():
-    pass
-
-
 if __name__ == '__main__':
     # model = keras.Sequential([
     #     keras.layers.Dense(32, input_shape=(4,))
     # ])
     # print(model.trainable_variables)
-    model = SimpleGAN()
+    # model = SimpleGAN()
     # ls = [1, 2, 3, 4]
     # print(derangement(ls))
     # img_batch = fetch_image()
     # caption_batch = fetch_caption()
     #
-    caption = ['The dog is jumping', 'the cat is flying']
-    tokenizer = keras.preprocessing.text.Tokenizer()
-    tokenizer.fit_on_texts(caption)
-    print(tokenizer.index_word)
-    cap_vector = np.array(tokenizer.texts_to_sequences(caption))
-    # cap_vector = [token[0] for token in cap_vector if token]
-    print(cap_vector)
-
-    images = np.random.random((2, 64, 64, 3))
-
-    predictions = model([images, cap_vector])
-    print(len(model.trainable_variables))
+    # caption = ['The dog is jumping', 'the cat is flying']
+    # tokenizer = keras.preprocessing.text.Tokenizer()
+    # tokenizer.fit_on_texts(caption)
+    # print(tokenizer.index_word)
+    # cap_vector = np.array(tokenizer.texts_to_sequences(caption))
+    # # cap_vector = [token[0] for token in cap_vector if token]
+    # print(cap_vector)
+    #
+    # images = np.random.random((2, 64, 64, 3))
+    #
+    # predictions = model([images, cap_vector])
+    # print(len(model.trainable_variables))
     # print(predictions)
 
     # caption_emb = TextEncoder(VOCAB_SIZE, EMB_SIZE, 64, dropout_rate=0.2)(np.array(cap_vector))
@@ -110,3 +106,11 @@ if __name__ == '__main__':
     #
     # prediction = DNet()(generated_img, caption_emb)
     # print(prediction)
+
+    texts = read_labels(1)[:100]
+
+    image_resize = resize_image(64, 64)
+    texts_vectors, vocab_size = text_preprocessing(texts)
+
+    model = SimpleGAN(vocab_size)
+    train(texts_vectors, image_resize, model, epochs=50)

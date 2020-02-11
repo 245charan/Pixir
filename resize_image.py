@@ -11,8 +11,8 @@ def resize_image(width=128, height=128):
         i += 1
         resized_image = image.resize((width, height))
         resized_image.save(f'resized_images/{i}.jpg')
-        resized_image_set.append(resized_image)
-    return resized_image_set
+        resized_image_set.append(np.array(resized_image))
+    return np.array(resized_image_set)
 
 if __name__ == '__main__':
     resize_image()

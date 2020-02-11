@@ -7,7 +7,7 @@ def read_images():
     """
     read_images 실행시 images 폴터에 있는 image들을 읽어서 ndarray 형태로 return
     """
-    file_names = pd.read_csv('image_info/images.txt', sep=' ', index_col=0)  # 이미지 파일 이름
+    file_names = pd.read_csv('image_info/images.txt', sep=' ', index_col=0).iloc[:100]  # 이미지 파일 이름
     # class_names = pd.read_csv('image_info/classes.txt', sep='\t',  names=['class'])  # 폴더 이름
     # print(file_names.shape)
     img_set = []
@@ -50,7 +50,7 @@ def read_labels(cap_num):
                 for line in f:
                     labels[textname].append(line.replace('\n', ''))
 
-            label_set.append(labels)
+            label_set.append(labels[textname][:cap_num])
 
     label_set = np.array(label_set)
     # print(label_set.shape)

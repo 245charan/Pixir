@@ -9,7 +9,7 @@ import numpy as np
 # nltk.download('wordnet')
 
 
-def text_preprocessing(text, pad_maxlen):
+def text_preprocessing(text):
     # text to word_sequence
     texts = [text_to_word_sequence(word) for texts in text for word in texts]
 
@@ -30,9 +30,10 @@ def text_preprocessing(text, pad_maxlen):
     tokens = tokenizer.index_word
 
     cap_vector = tokenizer.texts_to_sequences(texts_lemmatized)
-    pad_sequences = sequence.pad_sequences(cap_vector, maxlen=pad_maxlen, padding='post')
+    pad_sequences = sequence.pad_sequences(cap_vector, padding='post')
     result = np.array(pad_sequences)
-    return result
+    vocab_size = len(tokenizer.index_word) + 1
+    return result, vocab_size
 
 
 if __name__ == '__main__':
