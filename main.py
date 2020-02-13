@@ -115,10 +115,11 @@ if __name__ == '__main__':
 
     print(texts_vectors[0])
     img = model.generate(texts_vectors[0])
-    img = (img + 1) * 255
-    plt.imshow(img.numpy().squeeze())
-    plt.axis('off')
-    plt.show()
+    print(img)
+    # img = (img + 1) * 127.5
+    # plt.imshow(img.numpy().squeeze())
+    # plt.axis('off')
+    # plt.show()
 
     # image_resize = image_resize / 255 - 1
     # pred = model([image_resize[:10], texts_vectors[:10]], texts_vectors[10:20])

@@ -32,6 +32,6 @@ class GNet(keras.Model):
 
 if __name__ == '__main__':
     gnet = GNet()
-    inputs = tf.random.normal((1, 228))
+    inputs = tf.random.normal((2, 228))
     output = gnet(inputs)
-    print(gnet.trainable_variables)
+    print(output.shape)
