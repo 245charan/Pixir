@@ -777,7 +777,7 @@ class Image_encoder(tf.keras.Model):
         branch_pool = self.conv_mix7_avgpool(branch_pool)
         branch_pool = self.batchnom_mix7_avgpool(branch_pool)
         branch_pool = self.actvation_mix7_avgpool(branch_pool)
-        print(branch_pool.shape)
+        # print(branch_pool.shape)
 
         x = concatenate(
             [branch1x1, branch7x7, branch7x7dbl, branch_pool],
@@ -816,13 +816,13 @@ class Image_encoder(tf.keras.Model):
             [branch3x3, branch7x7x3, branch_pool],
             axis=channel_axis,
             name='mixed8')
-        print('x1.shape:', x.shape)
+        # print('x1.shape:', x.shape)
 
         # mixed 9: 8 x 8 x 2048
         branch1x1 = self.conv_mix9_1x1(x)
         branch1x1 = self.batchnom_mix9_1x1(branch1x1)
         branch1x1 = self.actvation_mix9_1x1(branch1x1)
-        print('branch1x1:', branch1x1.shape)
+        # print('branch1x1:', branch1x1.shape)
 
         branch3x3 = self.conv_mix9_3x3_1(x)
         branch3x3 = self.batchnom_mix9_3x3_1(branch3x3)
@@ -840,7 +840,7 @@ class Image_encoder(tf.keras.Model):
             [branch3x3_1, branch3x3_2],
             axis=channel_axis,
             name='mixed9_' + str(1))
-        print('branch3x3:', branch3x3.shape)  # (1, 19, 19, 768)
+        # print('branch3x3:', branch3x3.shape)  # (1, 19, 19, 768)
 
         branch3x3dbl = self.conv_mix9_br3x3dbl_1(x)
         branch3x3dbl = self.batchnom_mix9_br3x3dbl_1(branch3x3dbl)
@@ -859,26 +859,26 @@ class Image_encoder(tf.keras.Model):
         branch3x3dbl_2 = self.actvation_mix9_br3x3dbl_4(branch3x3dbl_2)
         branch3x3dbl = concatenate(
             [branch3x3dbl_1, branch3x3dbl_2], axis=channel_axis)
-        print('branch3x3dbl:', branch3x3dbl.shape)  # (1, 17, 17, 768)
+        # print('branch3x3dbl:', branch3x3dbl.shape)  # (1, 17, 17, 768)
 
         branch_pool = self.avgpool_mix9(x)
 
         branch_pool = self.conv_mix9_pool(branch_pool)
         branch_pool = self.batchnom_mix9_pool(branch_pool)
         branch_pool = self.actvation_mix9_pool(branch_pool)
-        print('branch_pool:', branch_pool.shape)  # (1, 20, 20, 192)
+        # print('branch_pool:', branch_pool.shape)  # (1, 20, 20, 192)
         x = concatenate(
             [branch1x1, branch3x3, branch3x3dbl, branch_pool],
             axis=channel_axis,
             name='mixed' + str(9))
-        print('x2.shape:', x.shape)
+        # print('x2.shape:', x.shape)
 
 
         # mixed 10: 8 x 8 x 2048
         branch1x1 = self.conv_mix10_1x1(x)
         branch1x1 = self.batchnom_mix10_1x1(branch1x1)
         branch1x1 = self.actvation_mix10_1x1(branch1x1)
-        print('branch1x1:', branch1x1.shape)
+        # print('branch1x1:', branch1x1.shape)
 
         branch3x3 = self.conv_mix10_3x3_1(x)
         branch3x3 = self.batchnom_mix10_3x3_1(branch3x3)
@@ -896,7 +896,7 @@ class Image_encoder(tf.keras.Model):
             [branch3x3_1, branch3x3_2],
             axis=channel_axis,
             name='mixed9_' + str(1))
-        print('branch3x3:', branch3x3.shape)  # (1, 19, 19, 768)
+        # print('branch3x3:', branch3x3.shape)  # (1, 19, 19, 768)
 
         branch3x3dbl = self.conv_mix10_br3x3dbl_1(x)
         branch3x3dbl = self.batchnom_mix10_br3x3dbl_1(branch3x3dbl)
@@ -915,19 +915,19 @@ class Image_encoder(tf.keras.Model):
         branch3x3dbl_2 = self.actvation_mix10_br3x3dbl_4(branch3x3dbl_2)
         branch3x3dbl = concatenate(
             [branch3x3dbl_1, branch3x3dbl_2], axis=channel_axis)
-        print('branch3x3dbl:', branch3x3dbl.shape)  # (1, 17, 17, 768)
+        # print('branch3x3dbl:', branch3x3dbl.shape)  # (1, 17, 17, 768)
 
         branch_pool = self.avgpool_mix10(x)
 
         branch_pool = self.conv_mix10_pool(branch_pool)
         branch_pool = self.batchnom_mix10_pool(branch_pool)
         branch_pool = self.actvation_mix10_pool(branch_pool)
-        print('branch_pool:', branch_pool.shape)  # (1, 20, 20, 192)
+        # print('branch_pool:', branch_pool.shape)  # (1, 20, 20, 192)
         x = concatenate(
             [branch1x1, branch3x3, branch3x3dbl, branch_pool],
             axis=channel_axis,
             name='mixed_' + str(10))
-        print('x.shape:', x.shape)
+        # print('x.shape:', x.shape)
 
 
         # Classification block
@@ -935,10 +935,10 @@ class Image_encoder(tf.keras.Model):
         x = Dense(classes, activation='softmax', name='predictions')(x)
         shape_x = tf.reshape(x, [-1, tf.keras.backend.shape(x)[0]])
         cnn_code = self.emb_cnn_code(shape_x)
-        print('cnn_code:', cnn_code.shape)
+        # print('cnn_code:', cnn_code.shape)
         # features
         features = self.emb_features(features)
-        print('features:', features.shape)
+        # print('features:', features.shape)
         return cnn_code, features
 
 
