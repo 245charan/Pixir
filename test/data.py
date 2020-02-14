@@ -1,9 +1,11 @@
 import pickle
 import re
 
+# from skimage import io, transform
+from PIL import Image
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from PIL import Image
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
@@ -11,20 +13,20 @@ DATA_PATH = 'D:/dev/python/pixir/'
 
 
 def load_data(width=128, height=128, caption_per_image=1):
-    file_names = pd.read_csv(DATA_PATH + 'image_info/images.txt', sep=' ', index_col=0, header=None).iloc[:, 0]  # 이미지 파일 이름
-    images = []
+    file_names = pd.read_csv(DATA_PATH + 'image_info/images.txt', sep=' ', index_col=0, header=None).iloc[:, 0]   # 이미지 파일 이름
+    images = np.empty((len(file_names), height, width, 3), dtype=np.uint16)
     texts = []
-    for img_file_name in file_names.values:
+    for i, img_file_name in tqdm(enumerate(file_names)):
         img_path = DATA_PATH + 'images/' + img_file_name
         text_path = DATA_PATH + 'text/' + img_file_name[:-3] + 'txt'
 
         img = Image.open(img_path, mode='r')
         img_resized = img.resize((width, height))
-        img_arr = np.array(img_resized)
+        img_arr = np.array(img_resized, dtype=np.uint16)
         # 2차원 이미지는 버림
         if len(img_arr.shape) != 3:
             continue
-        images.append(img_arr)
+        images[i, :, :, :] = img_arr
 
         with open(text_path, mode='r', encoding='utf-8')as f:
             lines = 0
@@ -153,11 +155,20 @@ def bert_encode(texts, tokenizer, max_len=512):
 
 
 if __name__ == '__main__':
-    file_names = pd.read_csv(DATA_PATH + 'image_info/images.txt', sep=' ', index_col=0, header=None).iloc[:, 0]  # 이미지 파일 이름
-    a = 0
-    for file_name in file_names.values:
-        a += 1
-    print(a)
+    image = Image.open('../images/001.Black_footed_Albatross/Black_Footed_Albatross_0046_18.jpg', mode='r')
+    print(np.array(image, dtype=np.uint16))
+    print(np.array(image).shape)
+    image = image.resize((64, 64))
+    print(np.array(image))
+    print(np.array(image).shape)
+    # images, texts = load_data(64, 64, 1)
+    # print(images.shape)
+    # print(texts.shape)
+    # print(images[0])
+    # np.save('images3.npy', images)
+    # texts.to_csv('texts.csv', header=False, encoding='utf-8')
+    # images = np.load('images.npy')
+    # print(images.shape)
     # print(file_names.shape)
     # print(file_names.head())
     # print(file_names.tail())

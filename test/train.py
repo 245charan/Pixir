@@ -31,7 +31,7 @@ def train(dataset, generator, discriminator, seeds, epochs, gen_lr=1e-4, disc_lr
         for data in dataset:
             images = data[0]
             texts = data[1]
-            fake_texts = derangement(texts)
+            fake_texts = tf.roll(texts, shift=5, axis=0)
             train_step(images, texts, fake_texts, generator, g_optimizer, discriminator, d_optimizer)
 
         if epoch == 0 or (epoch + 1) % 10 == 0:
@@ -55,7 +55,6 @@ def plot_generated_images(epoch, generator, texts, random_dim=100, dim=(10, 10),
     noise = np.random.normal(0, 1, size=[texts.shape[0], random_dim])
     inputs = tf.concat([noise, texts], axis=-1)
     generated_images = generator.predict(inputs)
-    generated_images = (generated_images + 1) * 127.5
 
     plt.figure(figsize=figsize)
     for i in range(generated_images.shape[0]):
