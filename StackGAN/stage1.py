@@ -3,10 +3,9 @@ import pickle
 import random
 import time
 
-import PIL
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from PIL import Image
 from tensorflow.keras import Input, Model
@@ -14,7 +13,6 @@ from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.layers import Dense, LeakyReLU, BatchNormalization, ReLU, Reshape, UpSampling2D, Conv2D, \
     Activation, concatenate, Flatten, Lambda, Concatenate
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 
 def load_class_ids(class_info_file_path):
@@ -314,6 +312,9 @@ if __name__ == '__main__':
                                                    embeddings_file_path_test,
                                                    image_size=(64, 64))
 
+    np.save('X_train.npy', X_train)
+    np.save('X_test.npy', X_test)
+
     gen_optimizer = Adam(lr=stage1_generator_lr, beta_1=0.5, beta_2=0.999)
     disc_optimizer = Adam(lr=stage1_discriminator_lr, beta_1=0.5, beta_2=0.999)
 
@@ -340,7 +341,7 @@ if __name__ == '__main__':
     tensorboard.set_model(embedding_compressor_model)
 
     real_labels = np.ones((batch_size, 1), dtype=np.float32) * 0.9
-    fake_labels = np.zeros((batch_size, 1), dtype=np.float32) * 0.1
+    fake_labels = np.zeros((batch_size, 1), dtype=np.float32) + 0.1
 
     summary_writer = tf.summary.create_file_writer('./logs')
 
@@ -390,7 +391,7 @@ if __name__ == '__main__':
 
         # 손실값 텐서보드 저장
         with summary_writer.as_default():
-            tf.summary.scalar('generator_loss', np.mean(gen_losses[0]), step=epoch)
+            tf.summary.scalar('generator_loss', np.mean(gen_losses)[0], step=epoch)
             tf.summary.scalar('discriminator_loss', np.mean(disc_losses), step=epoch)
 
         # 에포크 별 이미지 생성, 저장
