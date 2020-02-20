@@ -8,19 +8,22 @@ mpl.rcParams['axes.grid'] = False
 
 class Style_Transfer:
     def __init__(self, content_path, style_path):
-        self.content = content_path
-        self.style = style_path
-
-        self.content_path = tf.keras.utils.get_file('content.jpg', self.content)
-        self.style_path = tf.keras.utils.get_file('style.jpg', self.style)
+        self.content_path = content_path
+        self.style_path = style_path
 
         self.style_predict_path = tf.keras.utils.get_file('style_predict.tflite',
-                                                     'https://storage.googleapis.com/download.tensorflow.org/models/tflite/arbitrary_style_transfer/style_predict_quantized_256.tflite')
+                                                          'https://storage.googleapis.com/download.tensorflow.org/models/tflite/arbitrary_style_transfer/style_predict_quantized_256.tflite')
         self.style_transform_path = tf.keras.utils.get_file('style_transform.tflite',
-                                                       'https://storage.googleapis.com/download.tensorflow.org/models/tflite/arbitrary_style_transfer/style_transfer_quantized_dynamic.tflite')
+                                                            'https://storage.googleapis.com/download.tensorflow.org/models/tflite/arbitrary_style_transfer/style_transfer_quantized_dynamic.tflite')
 
-    def load_img(self, path_to_img):
-        img = tf.io.read_file(path_to_img)
+    def downloading_data(self):
+        self.content_path = tf.keras.utils.get_file('content.jpg', self.content_path)
+        self.style_path = tf.keras.utils.get_file('style.jpg', self.style_path)
+
+        return self.content_path, self.style_path
+
+    def load_img(self, path):
+        img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=3)
         img = tf.image.convert_image_dtype(img, tf.float32)
         img = img[tf.newaxis, :]
@@ -110,6 +113,34 @@ class Style_Transfer:
                     1 - content_blending_ratio) * style_bottleneck
         stylized_image_blended = self.run_style_transform(style_bottleneck_blended, preprocessed_content_image)
         self.imshow(stylized_image_blended, 'Blended Stylized Image')
+
+
+
+if __name__ == '__main__':
+    content_path ='https://storage.googleapis.com/khanhlvg-public.appspot.com/arbitrary-style-transfer/belfry-2611573_1280.jpg'
+    style_path = 'https://storage.googleapis.com/khanhlvg-public.appspot.com/arbitrary-style-transfer/style23.jpg'
+
+    transfer = Style_Transfer(content_path, style_path)
+
+    load_content, load_style = transfer.downloading_data()
+
+    content_image = transfer.load_img(load_content)
+    style_image = transfer.load_img(load_style)
+
+    preprocessed_style_image = transfer.preprocess_style_image(style_image)
+    preprocessed_content_image = transfer.preprocess_content_image(content_image)
+
+    transfer.imshow(preprocessed_content_image, 'content image')
+    transfer.imshow(preprocessed_style_image, 'style image')
+
+    style_bottleneck = transfer.run_style_predict(preprocessed_style_image)
+
+    stylized_image = transfer.run_style_transform(style_bottleneck, preprocessed_content_image)
+
+    transfer.style_blending(content_blending_ratio=0.5, content_image=content_image,
+                            style_bottleneck=style_bottleneck, preprocessed_content_image=preprocessed_content_image)
+
+
 
 
 
