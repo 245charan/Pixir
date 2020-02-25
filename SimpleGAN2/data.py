@@ -50,7 +50,7 @@ def text_preprocessing(text: pd.Series):
     stop_words = set(stopwords.words('english'))
     texts_lemmatized = texts.apply(lambda x: ' '.join([n.lemmatize(word) for word in x if word not in stop_words]))
 
-    with open(DATA_PATH + 'tokenizer.pkl', 'rb') as f:
+    with open('tokenizer.pkl', 'rb') as f:
         tokenizer = pickle.load(f)
 
     tokens, masks, segments = bert_encode(texts_lemmatized, tokenizer, max_len=32)
