@@ -1,0 +1,137 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adam
+
+
+def train(text_vectors, images, model, epochs, batch_size=128, lr=1e-4):
+    loss_fn = tf.keras.losses.binary_crossentropy
+    g_optimizer = Adam(lr)
+    d_optimizer = Adam(lr)
+
+    # Rescale -1 to 1
+    images = images / 127.5 - 1.
+    # images = np.expand_dims(images, axis=3)
+
+    # Adversarial ground truths
+    # valid = np.ones((batch_size, 1))
+    # fake = np.zeros((batch_size, 1))
+
+    for epoch in range(epochs):
+        # idx = np.random.permutation(len(text_vectors))
+        # img_batch = images[idx[:batch_size]]
+        dataset = tf.data.Dataset.from_tensor_slices((images, text_vectors))
+        dataset = dataset.shuffle(buffer_size=100)
+        dataset = dataset.batch(batch_size)
+        # img_dataset = tf.data.Dataset.from_tensor_slices(images)
+        # img_dataset = img_dataset.batch(batch_size)
+        # text_dataset = tf.data.Dataset.from_tensor_slices(text_vectors)
+        # text_dataset = text_dataset.batch(batch_size)
+        for data in dataset:
+            fake_captions = derangement(data[1])
+            with tf.GradientTape() as g_tape, tf.GradientTape() as d_tape:
+                fake_image_pred, real_image_pred, fake_caption_pred = model(data, fake_captions)
+                fake_image_loss, real_image_loss, fake_caption_loss = \
+                    loss_fn(tf.zeros_like(fake_image_pred), fake_image_pred), \
+                    loss_fn(tf.ones_like(real_image_pred), real_image_pred), \
+                    loss_fn(tf.zeros_like(fake_caption_pred), fake_caption_pred)
+                d_loss = (fake_image_loss + real_image_loss + fake_caption_loss) / 3
+                g_loss = loss_fn(tf.ones_like(fake_image_pred), fake_image_pred)
+            g_trainable_variables = model.text_encoder.trainable_variables + model.generator.trainable_variables
+            g_grads = d_tape.gradient(d_loss, g_trainable_variables)
+            d_grads = g_tape.gradient(g_loss, model.discriminator.trainable_variables)
+            g_optimizer.apply_gradients(zip(g_grads, g_trainable_variables))
+            d_optimizer.apply_gradients(zip(d_grads, model.discriminator.trainable_variables))
+
+        # Plot the progress
+        print("%d [D loss: %f] [G loss: %f]" % (epoch, d_loss[0], g_loss[0]))
+
+
+def derangement(list):
+    while True:
+        shuffled_list = tf.random.shuffle(list)
+        for i in range(len(list)):
+            if all(tf.equal(list[i], shuffled_list[i])):
+                break
+        else:
+            break
+    return shuffled_list
+
+# class GAN():
+#     def __init__(self):
+#         self.img_rows = 64
+#         self.img_cols = 64
+#         self.channels = 3
+#         self.img_shape = (self.img_rows, self.img_cols, self.channels)
+#         self.latent_dim = 100
+#
+#         optimizer = Adam(0.0001, 0.9)
+#
+#         # Build and compile the discriminator
+#         self.discriminator = self.DNet()
+#         self.discriminator.compile(loss='binary_crossentropy',
+#             optimizer=optimizer,
+#             metrics=['accuracy'])
+#
+#         # Build the generator
+#         self.generator = self.GNet()
+#
+#         # The generator takes noise as input and generates imgs
+#         z = Input(shape=(self.latent_dim,))
+#         img = self.generator(z)
+#
+#         # For the combined model we will only train the generator
+#         self.discriminator.trainable = False
+#
+#         # The discriminator takes generated images as input and determines validity
+#         validity = self.discriminator(img)
+#
+#         # The combined model  (stacked generator and discriminator)
+#         # Trains the generator to fool the discriminator
+#         self.combined = Model(z, validity)
+#         self.combined.compile(loss='binary_crossentropy', optimizer=optimizer)
+#
+#
+#
+#     def train(self, epochs, batch_size=128):
+#         # Load the dataset
+#         (X, Y), (_, _) =  # 데이터 로드
+#
+#         # Rescale -1 to 1
+#         X = X / 127.5 - 1.
+#         X = np.expand_dims(X, axis=3)
+#
+#         # Adversarial ground truths
+#         valid = np.ones((batch_size, 1))
+#         fake = np.zeros((batch_size, 1))
+#
+#         for epoch in range(epochs):
+#
+#             # ---------------------
+#             #  Train Discriminator
+#             # ---------------------
+#
+#             # Select a random batch of images
+#             idx = np.random.randint(0, X.shape[0], batch_size)
+#             imgs = X[idx]
+#
+#             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
+#
+#             # Generate a batch of new images
+#             gen_imgs = self.generator.predict(noise)
+#
+#             # Train the discriminator
+#             d_loss_real = self.discriminator.train_on_batch(imgs, valid)
+#             d_loss_fake = self.discriminator.train_on_batch(gen_imgs, fake)
+#             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+#
+#             # ---------------------
+#             #  Train Generator
+#             # ---------------------
+#
+#             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
+#
+#             # Train the generator (to have the discriminator label samples as valid)
+#             g_loss = self.combined.train_on_batch(noise, valid)
+#
+#             # Plot the progress
+#             print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
