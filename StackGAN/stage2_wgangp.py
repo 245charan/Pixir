@@ -7,10 +7,29 @@ import matplotlib.pyplot as plt
 from time import time
 
 
-def load_coco_dataset(data_path):
-    images = np.load(data_path + 'coco_images.npy').astype('float32')
-    captions = np.load(data_path + 'coco_korean_embedding.npy')
-    return images, captions
+def residual_block(input):
+    """생성기 신경망 내의 잔차 블록"""
+    x = layers.Conv2D(128 * 4, kernel_size=3, strides=1, padding='same')(input)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+
+    x = layers.Conv2D(128 * 4, kernel_size=3, strides=1, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.add([x, input])
+    x = layers.ReLU()(x)
+
+    return x
+
+
+def joint_block(inputs):
+    c = inputs[0]
+    x = inputs[1]
+
+    c = tf.expand_dims(c, axis=1)
+    c = tf.expand_dims(c, axis=1)
+    c = tf.tile(c, [1, 16, 16, 1])
+
+    return tf.concat([c, x], axis=-1)
 
 
 class RandomWeightedAverage(layers.Layer):
@@ -143,50 +162,70 @@ class Stage1WGANGP:
         self.discriminator = Model(inputs=[image, embedding], outputs=x2)
 
     def _build_generator(self):
+        # 1. CA 확대 신경망
         embedding = layers.Input(shape=(self.embedding_dim,))
-        x = layers.Dense(256)(embedding)
-        mean_logsigma = layers.LeakyReLU(0.2)(x)
+        input_lr_images = layers.Input(shape=(64, 64, 3))
+
+        ca = layers.Dense(256)(embedding)
+        mean_logsigma = layers.LeakyReLU(0.2)(ca)
+
         c = layers.Lambda(generate_c)(mean_logsigma)
 
-        z_noise = layers.Input(shape=(100,))
+        # 2. 이미지 인코더
+        x = layers.ZeroPadding2D(padding=(1, 1))(input_lr_images)
+        x = layers.Conv2D(128, kernel_size=3, strides=1, use_bias=False)(x)
+        x = layers.ReLU()(x)
 
-        gen_input = layers.Concatenate(axis=1)([c, z_noise])
-
-        x = layers.Dense(128 * 8 * 4 * 4, use_bias=False)(gen_input)
-
-        x = layers.Reshape((4, 4, 128 * 8), input_shape=(128 * 8 * 4 * 4,))(x)
+        x = layers.ZeroPadding2D(padding=(1, 1))(x)
+        x = layers.Conv2D(256, kernel_size=4, strides=2, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        # x = layers.Conv2DTranspose(512, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
+        x = layers.ZeroPadding2D(padding=(1, 1))(x)
+        x = layers.Conv2D(512, kernel_size=4, strides=2, use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
+
+        # 접합 블록
+        c_code = layers.Lambda(joint_block)([c, x])
+
+        # 3. 잔차 블록
+        x = layers.ZeroPadding2D(padding=(1, 1))(c_code)
+        x = layers.Conv2D(512, kernel_size=3, strides=1, use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
+
+        x = residual_block(x)
+        x = residual_block(x)
+        x = residual_block(x)
+        x = residual_block(x)
+
+        # 4. 상향 표본추출
         x = layers.UpSampling2D(size=(2, 2))(x)
         x = layers.Conv2D(512, kernel_size=3, padding='same', strides=1, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        # x = layers.Conv2DTranspose(256, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
         x = layers.UpSampling2D(size=(2, 2))(x)
         x = layers.Conv2D(256, kernel_size=3, padding='same', strides=1, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        # x = layers.Conv2DTranspose(128, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
         x = layers.UpSampling2D(size=(2, 2))(x)
         x = layers.Conv2D(128, kernel_size=3, padding='same', strides=1, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        # x = layers.Conv2DTranspose(64, kernel_size=3, strides=2, padding='same', use_bias=False)(x)
         x = layers.UpSampling2D(size=(2, 2))(x)
         x = layers.Conv2D(64, kernel_size=3, padding='same', strides=1, use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        # x = layers.Conv2DTranspose(3, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
-        x = layers.Conv2D(3, kernel_size=1, padding='same', strides=1, use_bias=False)(x)
-        x = layers.Activation(activation='tanh')(x)
+        x = layers.Conv2D(3, kernel_size=3, padding='same', strides=1, use_bias=False)(x)
+        x = layers.Activation('tanh')(x)
 
-        self.generator = Model(inputs=[embedding, z_noise], outputs=[x, mean_logsigma])
+        self.generator = Model(inputs=[embedding, input_lr_images], outputs=[x, mean_logsigma])
+
 
     @tf.function
     def train_discriminator(self, images, embeddings, wrong_embeddings):
@@ -269,36 +308,3 @@ class Stage1WGANGP:
         gradient_penalty = tf.square(1 - gradient_l2_norm)
         return tf.reduce_mean(gradient_penalty)
 
-
-if __name__ == '__main__':
-    data_path = '../data/coco_korean/'
-    embedding_dim = 768
-    image_size = 64
-    batch_size = 64
-    gen_lr = 0.002
-    disc_lr = 0.002
-    gp_weight = 10
-    kl_weight = 1
-    disc_train_n = 5
-    epochs = 10
-
-    images, embeddings = load_coco_dataset(data_path)
-    images = images / 127.5 - 1
-    # print(images.shape)
-    # print(embeddings.shape)
-    dataset = tf.data.Dataset.from_tensor_slices((images[:100], embeddings[:100]))
-    dataset = dataset.shuffle(buffer_size=100)
-    dataset = dataset.batch(batch_size)
-
-    stage1_wgan_gp = Stage1WGANGP(embedding_dim, image_size, gen_lr, disc_lr, gp_weight, kl_weight, disc_train_n)
-    # stage1_wgan_gp.generator.summary()
-    # stage1_wgan_gp.discriminator.summary()
-
-    seed_idx = np.random.choice(embeddings.shape[0], 16)
-    seeds = embeddings[seed_idx]
-    # print(seeds.shape)
-    stage1_wgan_gp.set_seeds(seeds, (4, 4), save_path='results/')
-    # print(stage1_wgan_gp.seeds.shape)
-    # print(stage1_wgan_gp.plot_dim)
-
-    stage1_wgan_gp.train(dataset, epochs)
