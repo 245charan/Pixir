@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers, Model
+from tensorflow.keras import layers, Model, models
 from tensorflow.keras.optimizers import Adam
 
 import numpy as np
@@ -75,12 +75,12 @@ def plot_generated_images(epoch, images, save_path, dim=(10, 10), figsize=(10, 1
         plt.imshow(images[i], interpolation='nearest')
         plt.axis('off')
     plt.tight_layout()
-    plt.savefig(save_path + f'generated_image_epoch_{epoch}.png')
+    plt.savefig(save_path + f'stage2_image_epoch_{epoch}.png')
     plt.show()
     plt.close()
 
 
-class Stage1WGANGP:
+class Stage2WGANGP:
     def __init__(self, embedding_dim, image_size, gen_lr, disc_lr, gp_weight, kl_weight, disc_train_num):
         self.embedding_dim = embedding_dim
         self.image_size = image_size
@@ -90,6 +90,7 @@ class Stage1WGANGP:
         self.kl_weight = kl_weight
         self.disc_train_num = disc_train_num
 
+        self.stage1_generator = None
         self.generator = None
         self.discriminator = None
         self.g_optimizer = None
@@ -101,6 +102,9 @@ class Stage1WGANGP:
         self.get_optimizer()
         self._build_generator()
         self._build_discriminator()
+
+    def get_stage1_generator(self, model_path):
+        self.stage1_generator = models.load_model(model_path, compile=False)
 
     def set_seeds(self, embeddings, dim, save_path):
         self.seeds = embeddings
@@ -120,46 +124,68 @@ class Stage1WGANGP:
         return model
 
     def _build_discriminator(self):
-        image = layers.Input(shape=(self.image_size, self.image_size, 3))
+        image = layers.Input(shape=(256, 256, 3))
 
-        x = layers.Conv2D(128, kernel_size=4, strides=2, padding='same',
-                          input_shape=(self.image_size, self.image_size, 3), use_bias=False)(image)
+        x = layers.Conv2D(64, kernel_size=4, strides=2, padding='same', input_shape=(256, 256, 3), use_bias=False)(image)
         x = layers.LeakyReLU(0.2)(x)
-        x = layers.Dropout(0.2)(x)
+
+        x = layers.Conv2D(128, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
+        # x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(0.2)(x)
 
         x = layers.Conv2D(256, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
         # x = layers.BatchNormalization()(x)
         x = layers.LeakyReLU(0.2)(x)
-        x = layers.Dropout(0.2)(x)
 
         x = layers.Conv2D(512, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
-        # x = BatchNormalization()(x)
+        # x = layers.BatchNormalization()(x)
         x = layers.LeakyReLU(0.2)(x)
-        x = layers.Dropout(0.2)(x)
 
         x = layers.Conv2D(1024, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
-        # x = BatchNormalization()(x)
+        # x = layers.BatchNormalization()(x)
         x = layers.LeakyReLU(0.2)(x)
-        x = layers.Dropout(0.2)(x)
+
+        x = layers.Conv2D(2048, kernel_size=4, strides=2, padding='same', use_bias=False)(x)
+        # x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(0.2)(x)
+
+        x = layers.Conv2D(1024, kernel_size=1, strides=1, padding='same', use_bias=False)(x)
+        # x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(0.2)(x)
+
+        x = layers.Conv2D(512, kernel_size=1, strides=1, padding='same', use_bias=False)(x)
+        # x = layers.BatchNormalization()(x)
+
+        x2 = layers.Conv2D(128, kernel_size=1, strides=1, padding='same', use_bias=False)(x)
+        # x2 = layers.BatchNormalization()(x2)
+        x2 = layers.LeakyReLU(0.2)(x2)
+
+        x2 = layers.Conv2D(128, kernel_size=3, strides=1, padding='same', use_bias=False)(x2)
+        # x2 = layers.BatchNormalization()(x2)
+        x2 = layers.LeakyReLU(0.2)(x2)
+
+        x2 = layers.Conv2D(512, kernel_size=3, strides=1, padding='same', use_bias=False)(x2)
+        # x2 = layers.BatchNormalization()(x2)
+
+        added_x = layers.add([x, x2])
+        added_x = layers.LeakyReLU(0.2)(added_x)
 
         embedding = layers.Input(shape=(self.embedding_dim,))
         ecm = self.build_embedding_compressor_model()
         ec = ecm(embedding)
         ec = layers.Reshape((1, 1, 128))(ec)
         ec = tf.tile(ec, (1, 4, 4, 1))
+        # 접합 블록
+        merged_input = layers.concatenate([added_x, ec])
 
-        merged_input = layers.concatenate([x, ec])
+        x3 = layers.Conv2D(512, kernel_size=1, strides=1, padding='same')(merged_input)
+        # x3 = layers.BatchNormalization()(x3)
+        x3 = layers.LeakyReLU(0.2)(x3)
+        x3 = layers.Flatten()(x3)
+        x3 = layers.Dense(1)(x3)
+        # x3 = layers.Activation('sigmoid')(x3)
 
-        x2 = layers.Conv2D(1024, kernel_size=1, strides=1, padding='same')(merged_input)
-        # x2 = BatchNormalization()(x2)
-        x2 = layers.LeakyReLU(0.2)(x2)
-        # x2 = layers.Conv2D(1, kernel_size=4, strides=4)(x2)
-        # x2 = layers.Reshape((1,))(x2)
-        x2 = layers.Flatten()(x2)
-        x2 = layers.Dense(1)(x2)
-        # x2 = Activation('sigmoid')(x2)
-
-        self.discriminator = Model(inputs=[image, embedding], outputs=x2)
+        self.discriminator = Model(inputs=[image, embedding], outputs=[x3])
 
     def _build_generator(self):
         # 1. CA 확대 신경망
@@ -229,13 +255,15 @@ class Stage1WGANGP:
 
     @tf.function
     def train_discriminator(self, images, embeddings, wrong_embeddings):
+        self.stage1_generator.trainable = False
         self.generator.trainable = False
         valid = np.ones((images.shape[0]), dtype=np.float32)
         fake = -np.ones((images.shape[0]), dtype=np.float32)
 
         z_noise = np.random.normal(0, 1, (images.shape[0], 100))
 
-        fake_img, _ = self.generator([embeddings, z_noise])
+        lr_image, _ = self.stage1_generator([embeddings, z_noise])
+        fake_img, _ = self.generator([embeddings, lr_image])
 
         with tf.GradientTape() as tape:
             v = self.discriminator([images, embeddings])
@@ -258,12 +286,14 @@ class Stage1WGANGP:
 
     @tf.function
     def train_generator(self, embeddings):
+        self.stage1_generator.trainable = False
         self.discriminator.trainable = False
         valid = np.ones((embeddings.shape[0]), dtype=np.float32)
         z_noise = np.random.normal(0, 1, (embeddings.shape[0], 100))
 
         with tf.GradientTape() as tape:
-            img, mean_logsigma = self.generator([embeddings, z_noise])
+            lr_img, _ = self.stage1_generator([embeddings, z_noise])
+            img, mean_logsigma = self.generator([embeddings, lr_img])
             output = self.discriminator([img, embeddings])
             g_loss = wasserstein(valid, output) + self.kl_weight * KL_loss(mean_logsigma)
 
@@ -286,11 +316,12 @@ class Stage1WGANGP:
                 self.train_generator(embeddings)
             if self.seeds is not None:
                 z_noise = np.random.normal(0, 1, (self.seeds.shape[0], 100))
-                gen_img, _ = self.generator.predict([self.seeds, z_noise])
+                lr_img, _ = self.stage1_generator.predict([self.seeds, z_noise])
+                gen_img, _ = self.generator.predict([self.seeds, lr_img])
                 plot_generated_images(epoch + 1, gen_img, self.save_path, dim=self.plot_dim)
             if (epoch + 1) % 100 == 0:
-                self.generator.save(save_model_path + f'stage1_generator_epoch{epoch + 1}.h5')
-                self.discriminator.save(save_model_path + f'stage1_discriminator_epoch{epoch + 1}.h5')
+                self.generator.save(save_model_path + f'stage2_generator_epoch{epoch + 1}.h5')
+                self.discriminator.save(save_model_path + f'stage2_discriminator_epoch{epoch + 1}.h5')
             print(f'Time for epoch {epoch + 1} is {time() - start} sec.')
 
     def gradient_penalty_loss(self, interpolated_samples, embeddings):
